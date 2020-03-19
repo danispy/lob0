@@ -30,7 +30,7 @@ void configRegisters()
 	address = (uint32_t*)(GPIOC_BASE+GPIOX_CRH_OFFSET);
 	*address = CRH_VALUE;
 	
-	address = (uint32_t*)(GPIOC_BASE+USART_BRR_OFFSET);
+	address = (uint32_t*)(USART3+USART_BRR_OFFSET);
 	*address = BRR_VALUE;
 	
 	address = (uint32_t*)(USART3+USART_CR1_OFFSET);
