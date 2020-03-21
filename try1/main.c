@@ -3,6 +3,7 @@
 #define RCC 0x40021000 //resert and clock control
 #define RCC_APB2ENR_OFFSET 0x18 //need to turn on bit 14 to reset usart1's clock
 
+#define GPIOA_BASE 0x40010800
 #define GPIOC_BASE 0x40011000
 #define GPIOX_CRH_OFFSET 0x04
 #define GPIOX_ODR_OFFSET 0x0c //output register
@@ -19,9 +20,10 @@
 #define SET_LED 0 //turn on
 #define RESET_LED 0x2000
 #define RCC_VALUES 0x20000
-#define APB2_VALUES 0x4011
+#define APB2_VALUES 0x4015
 #define CR1_VALUES 0x200C
-#define CRH_VALUE 0x100000
+#define CRH_A_VALUE 0x490
+#define CRH_C_VALUE 0x100000
 #define USARTDIV_VALUE 0x1D4C //468.75
 
 void configRegisters()
@@ -30,13 +32,16 @@ void configRegisters()
 	*address = APB2_VALUES;
 		
 	address = (uint32_t*)(GPIOC_BASE+GPIOX_CRH_OFFSET);
-	*address = CRH_VALUE;
+	*address = CRH_C_VALUE;
+	
+	address = (uint32_t*)(GPIOA_BASE+GPIOX_CRH_OFFSET);
+	*address = CRH_A_VALUE;
 	
 	address = (uint32_t*)(USART1+USART_BRR_OFFSET);
 	*address = USARTDIV_VALUE;
 	
 	address = (uint32_t*)(USART1+USART_CR2_OFFSET);
-	*address = 0x800;
+	*address = 0;
 	
 	address = (uint32_t*)(USART1+USART_CR1_OFFSET);
 	*address = CR1_VALUES;
@@ -52,12 +57,22 @@ void led(char state)
 		*address = RESET_LED;
 }
 
+void getMsg(uint32_t check_sr, uint32_t* sr, uint32_t* usart_dr)
+{
+	if(check_sr == 0b100000)
+	{//received information
+		char check = *usart_dr;
+		*sr = (*sr)*0b1111011111;//zerofy RXNE
+		led(check);	
+	}
+}
+
 int main()
 {
 	int send_zero = 0;
 	int send_one = 0;
-	char check = '0';
-	uint32_t* check_sr = (uint32_t*)(USART1);
+	uint32_t check_sr = 0;
+	uint32_t* sr = (uint32_t*)(USART1);
 	uint32_t* usart_dr = (uint32_t*)(USART1+USART_DR_OFFSET);
 	configRegisters();
 	led('0');
@@ -65,14 +80,12 @@ int main()
 	{
 		if(send_one == 1)
 			*usart_dr = '1';//send '1'
-		if((*check_sr)*(0b100000) == 0b100000)
-		{//received information
-			check = *usart_dr;
-			*check_sr = (*check_sr)*0b1111011111;//zerofy RXNE
-			led(check);
-		}
+		check_sr = (*sr)&(0b100000);
+		getMsg(check_sr, sr, usart_dr);
 		if(send_zero == 1)
 			*usart_dr = '0';//send '0'
+		check_sr = (*sr)&(0b100000);
+		getMsg(check_sr, sr, usart_dr);
 	}
 	return 0;
 }
